@@ -15,7 +15,6 @@ import net.minecraft.item.Items;
 import net.minecraft.screen.slot.SlotActionType;
 import net.minecraft.util.Hand;
 
-
 public class AutoLoginXin extends Module {
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
@@ -26,44 +25,40 @@ public class AutoLoginXin extends Module {
     private boolean login = false;
 
     private final Setting<String> password = sgGeneral.add(new StringSetting.Builder()
-        .name("登录密码")
-        .description("Xin服登录密码")
-        .defaultValue("123456")
-        .build()
-    );
+            .name("登录密码")
+            .description("Xin服登录密码")
+            .defaultValue("123456")
+            .build());
 
     public final Setting<Integer> afterLoginTime = sgGeneral.add(new IntSetting.Builder()
-        .name("输入密码延迟")
-        .description("输入密码前等待的时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
-        .build()
-    );
+            .name("输入密码延迟")
+            .description("输入密码前等待的时间，单位秒")
+            .defaultValue(2)
+            .min(0)
+            .max(10)
+            .sliderMin(0)
+            .sliderMax(10)
+            .build());
 
     public final Setting<Integer> joinQueueDelay = sgGeneral.add(new IntSetting.Builder()
-        .name("加入队列延迟")
-        .description("右键指南针加入队列等待的时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
-        .build()
-    );
+            .name("加入队列延迟")
+            .description("右键指南针加入队列等待的时间，单位秒")
+            .defaultValue(2)
+            .min(0)
+            .max(10)
+            .sliderMin(0)
+            .sliderMax(10)
+            .build());
 
     public final Setting<Integer> containerClickDelay = sgGeneral.add(new IntSetting.Builder()
-        .name("容器点击延迟")
-        .description("在容器中点击指南针的延迟时间，单位秒")
-        .defaultValue(2)
-        .min(0)
-        .max(10)
-        .sliderMin(0)
-        .sliderMax(10)
-        .build()
-    );
+            .name("容器点击延迟")
+            .description("在容器中点击指南针的延迟时间，单位秒")
+            .defaultValue(2)
+            .min(0)
+            .max(10)
+            .sliderMin(0)
+            .sliderMax(10)
+            .build());
 
     public AutoLoginXin() {
         super(EasyAddon.CATEGORY, "auto-login-xin", "auto-login-xin");
@@ -72,14 +67,16 @@ public class AutoLoginXin extends Module {
     }
 
     private boolean isInLoginLobby() {
-        if (mc.player == null) return false;
+        if (mc.player == null)
+            return false;
         var pos = mc.player.getBlockPos();
         return pos.getX() == 8 && pos.getY() == 5 && pos.getZ() == 8;
     }
 
     @EventHandler
     public void onTick(TickEvent.Pre event) {
-        if (mc.player == null) return;
+        if (mc.player == null)
+            return;
 
         if (login && timer.passedS(afterLoginTime.get())) {
             System.out.println("login" + password.get());
@@ -90,7 +87,8 @@ public class AutoLoginXin extends Module {
         // 只在未完成登录且在登录大厅位置时执行队列相关操作
         if (isInLoginLobby()) {
             // 处理容器界面中的指南针点击
-            if (mc.currentScreen instanceof GenericContainerScreen && containerTimer.passedS(containerClickDelay.get())) {
+            if (mc.currentScreen instanceof GenericContainerScreen
+                    && containerTimer.passedS(containerClickDelay.get())) {
                 GenericContainerScreen containerScreen = (GenericContainerScreen) mc.currentScreen;
                 var handler = containerScreen.getScreenHandler();
 
@@ -107,7 +105,7 @@ public class AutoLoginXin extends Module {
             }
 
             if (InvUtils.find(Items.COMPASS).isHotbar() && queueTimer.passedS(joinQueueDelay.get())) {
-                InvUtils.swap(InvUtils.find(Items.COMPASS).slot(),false);
+                InvUtils.swap(InvUtils.find(Items.COMPASS).slot(), false);
                 mc.interactionManager.interactItem(mc.player, Hand.MAIN_HAND);
                 queueTimer.reset();
             }
