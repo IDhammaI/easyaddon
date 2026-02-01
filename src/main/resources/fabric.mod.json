@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "easy-addon",
-  "version": "0.0.8",
+  "version": "${version}",
   "name": "EasyKit Addon",
   "description": "easykit-addon for Meteor Client.",
   "authors": [
@@ -21,7 +21,7 @@
     "meteor-client:color": "225,25,25"
   },
   "depends": {
-    "java": ">=17",
+    "java": ">=21",
     "minecraft": ["${mc_version}"],
     "meteor-client": "*"
   }

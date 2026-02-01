@@ -182,7 +182,7 @@ public class ElytraFlyXin extends Module {
     public static double[] directionSpeedKey(double speed) {
         float forward = (mc.options.forwardKey.isPressed() ? 1 : 0) + (mc.options.backKey.isPressed() ? -1 : 0);
         float side = (mc.options.leftKey.isPressed() ? 1 : 0) + (mc.options.rightKey.isPressed() ? -1 : 0);
-        float yaw = mc.player.prevYaw + (mc.player.getYaw() - mc.player.prevYaw) * mc.getTickDelta();
+        float yaw = mc.player.prevYaw + (mc.player.getYaw() - mc.player.prevYaw) * 1.0f;
         if (forward != 0.0f) {
             if (side > 0.0f) {
                 yaw += ((forward > 0.0f) ? -45 : 45);
@@ -234,7 +234,7 @@ public class ElytraFlyXin extends Module {
         if (mc.player == null || mc.world == null || !hasElytra || !mc.player.isFallFlying() || event.isPost()) return;
 
         // 获取玩家当前的朝向向量（水平方向）
-        Vec3d lookVec = getRotationVec(mc.getTickDelta());
+        Vec3d lookVec = getRotationVec(1.0f);
         // 计算水平朝向距离（用于方向计算）
         double lookDist = Math.sqrt(lookVec.x * lookVec.x + lookVec.z * lookVec.z);
         // 计算当前水平移动距离

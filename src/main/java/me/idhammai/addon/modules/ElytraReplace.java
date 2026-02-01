@@ -15,14 +15,15 @@ import net.minecraft.item.Items;
 
 public class ElytraReplace extends Module {
     private final SettingGroup sgGeneral = settings.getDefaultGroup();
+    private static final int ELYTRA_MAX_DAMAGE = new ItemStack(Items.ELYTRA).getMaxDamage();
 
     // 鞘翅替换耐久度阈值设置
     private final Setting<Integer> replaceDurability = sgGeneral.add(new IntSetting.Builder()
         .name("耐久度阈值")
         .description("鞘翅替换的耐久度阈值")
         .defaultValue(2)
-        .range(1, Items.ELYTRA.getMaxDamage() - 1)
-        .sliderRange(1, Items.ELYTRA.getMaxDamage() - 1)
+        .range(1, ELYTRA_MAX_DAMAGE - 1)
+        .sliderRange(1, ELYTRA_MAX_DAMAGE - 1)
         .build()
     );
 

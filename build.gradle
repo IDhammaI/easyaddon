@@ -43,7 +43,7 @@ dependencies {
     modImplementation "curse.maven:litematica-${project.litematica_projectid}:${project.litematica_fileid}"
 
     // malilib 依赖
-    modImplementation "fi.dy.masa.malilib:malilib-fabric-1.20.4:${project.malilib_version}"
+    modImplementation "fi.dy.masa.malilib:malilib-fabric-1.21.1:${project.malilib_version}"
 
     // baritone 依赖
     modCompileOnly "meteordevelopment:baritone:${project.baritone_version}-SNAPSHOT"
@@ -68,13 +68,13 @@ tasks {
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     tasks.withType(JavaCompile).configureEach {
         it.options.encoding = "UTF-8"
-        it.options.release = 17
+        it.options.release = 21
     }
 }
 

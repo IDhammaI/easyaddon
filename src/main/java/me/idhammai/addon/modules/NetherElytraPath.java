@@ -15,6 +15,8 @@ import meteordevelopment.meteorclient.utils.player.Rotations;
 import meteordevelopment.meteorclient.utils.world.BlockUtils;
 import meteordevelopment.orbit.EventHandler;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ContainerComponent;
 import net.minecraft.item.Items;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
@@ -229,34 +231,20 @@ public class NetherElytraPath extends Module {
     }
 
     private boolean isShulkerFullOfFireworks(ItemStack shulkerStack) {
-        // 没有NBT数据就返回false
-        if (!shulkerStack.hasNbt() || !shulkerStack.getNbt().contains("BlockEntityTag")) {
+        ContainerComponent container = shulkerStack.get(DataComponentTypes.CONTAINER);
+        if (container == null) {
             return false;
         }
 
-        var blockEntityTag = shulkerStack.getNbt().getCompound("BlockEntityTag");
-        if (!blockEntityTag.contains("Items")) {
-            return false;
-        }
-
-        var itemsList = blockEntityTag.getList("Items", 10);
-
-        // 空潜影盒返回false
-        if (itemsList.size() == 0) {
-            return false;
-        }
-
-        // 检查每个物品是否都是烟花
-        for (int i = 0; i < itemsList.size(); i++) {
-            var itemCompound = itemsList.getCompound(i);
-            String itemId = itemCompound.getString("id");
-
-            if (!"minecraft:firework_rocket".equals(itemId)) {
+        boolean hasAnyItem = false;
+        for (ItemStack stack : container.iterateNonEmpty()) {
+            hasAnyItem = true;
+            if (!stack.isOf(Items.FIREWORK_ROCKET)) {
                 return false;
             }
         }
 
-        return true;
+        return hasAnyItem;
     }
 
     private boolean placeShulkerOnGround() {
