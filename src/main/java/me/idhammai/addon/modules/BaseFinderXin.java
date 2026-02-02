@@ -1,7 +1,6 @@
 package me.idhammai.addon.modules;
 
 import me.idhammai.addon.EasyAddon;
-import me.idhammai.addon.events.impl.TravelEvent;
 import meteordevelopment.meteorclient.events.render.Render3DEvent;
 import meteordevelopment.meteorclient.events.world.TickEvent;
 import meteordevelopment.meteorclient.renderer.ShapeMode;
@@ -9,7 +8,6 @@ import meteordevelopment.meteorclient.settings.*;
 import meteordevelopment.meteorclient.systems.modules.Module;
 import meteordevelopment.meteorclient.utils.render.color.SettingColor;
 import meteordevelopment.orbit.EventHandler;
-import net.minecraft.entity.MovementType;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
@@ -31,6 +29,8 @@ public class BaseFinderXin extends Module {
     private boolean isBack;
     private int turnDelayTimer;
     private float targetYaw;
+
+    private boolean forcingForward;
 
     // 存储所有目标区块
     private final Set<ChunkPos> targetChunks = Collections.synchronizedSet(new HashSet<>());
@@ -403,154 +403,122 @@ public class BaseFinderXin extends Module {
 
     @EventHandler
     private void onTick(TickEvent.Pre event) {
-        if (mc.player == null)
-            return;
-
-        // 更新当前路径区块
-        updateCurrentPathChunks();
-
-        // 添加已访问的区块
-        ChunkPos playerChunk = mc.player.getChunkPos();
-        visitedChunks.add(playerChunk);
-
-        // 如果没有到达上次的位置
-        if (!isBack) {
-            // 如果回到了上次的位置
-            if (mc.player.getChunkPos().equals(targetChunk)) {
-                isBack = true;
-            }
+        if (mc.player == null || mc.world == null) {
+            setForwardForced(false);
             return;
         }
 
-        // 检查圈数是否到达限制
+        updateCurrentPathChunks();
+
+        ChunkPos playerChunk = mc.player.getChunkPos();
+        visitedChunks.add(playerChunk);
+
+        if (!isBack) {
+            if (mc.player.getChunkPos().equals(targetChunk)) {
+                isBack = true;
+            }
+            setForwardForced(false);
+            return;
+        }
+
         if (currentCircle > circleLimit.get()) {
+            setForwardForced(false);
             info("搜索完成");
             toggle();
             return;
         }
 
-        // 检查是否完成一圈
         if (currentPath == PathEnum.NEXT_CIRCLE) {
             updateNextPath();
             currentCircle++;
             info("前往第" + currentCircle + "圈...");
 
-            // 动态预加载当前圈数+预加载圈数的区块
             int maxPreloadCircle = currentCircle + preloadCircles.get();
             if (maxPreloadCircle <= circleLimit.get()) {
-                // 只添加新的圈数区块，避免重复添加
                 for (int circle = currentCircle; circle <= maxPreloadCircle; circle++) {
                     addCircleChunks(circle);
                 }
             }
         }
 
-        // 根据当前路径设置目标区块
         switch (currentPath) {
             case CENTER_TO_LEFT, DOWN_LEFT_TO_LEFT ->
                 targetChunk = new ChunkPos(originChunk.x - chunkLoadRadius.get() * currentCircle * 2, originChunk.z);
             case CENTER_LEFT_TO_UP_LEFT ->
                 targetChunk = new ChunkPos(originChunk.x - chunkLoadRadius.get() * currentCircle * 2,
-                        originChunk.z - chunkLoadRadius.get() * currentCircle * 2);
+                    originChunk.z - chunkLoadRadius.get() * currentCircle * 2);
             case UP_LEFT_TO_UP_RIGHT ->
                 targetChunk = new ChunkPos(originChunk.x + chunkLoadRadius.get() * currentCircle * 2,
-                        originChunk.z - chunkLoadRadius.get() * currentCircle * 2);
+                    originChunk.z - chunkLoadRadius.get() * currentCircle * 2);
             case UP_RIGHT_TO_DOWN_RIGHT ->
                 targetChunk = new ChunkPos(originChunk.x + chunkLoadRadius.get() * currentCircle * 2,
-                        originChunk.z + chunkLoadRadius.get() * currentCircle * 2);
+                    originChunk.z + chunkLoadRadius.get() * currentCircle * 2);
             case DOWN_RIGHT_TO_DOWN_LEFT ->
                 targetChunk = new ChunkPos(originChunk.x - chunkLoadRadius.get() * currentCircle * 2,
-                        originChunk.z + chunkLoadRadius.get() * currentCircle * 2);
+                    originChunk.z + chunkLoadRadius.get() * currentCircle * 2);
         }
 
-        // 如果到达目标区块
         if (mc.player.getChunkPos().equals(targetChunk)) {
+            setForwardForced(false);
             if (turnDelayTimer == 0) {
                 turnDelayTimer = turnDelay.get();
                 return;
             }
 
-            // 延迟结束后更新路径
-            if (turnDelayTimer == 1) { // 最后一tick
+            if (turnDelayTimer == 1) {
                 updateNextPath();
                 info("已完成第" + currentCircle + "圈的 " + currentPath);
             }
 
-            turnDelayTimer--; // 递减计时器
-            return; // 延迟期间不移动
-        }
-    }
-
-    // 移动控制事件处理（参考 SimpleElytraFlyPath 的实现）
-    @EventHandler
-    public void onMove(TravelEvent event) {
-        if (mc.player == null || mc.world == null || event.isPost()) {
+            turnDelayTimer--;
             return;
         }
 
-        // 如果没有目标区块或者在延迟期间，不移动
         if (targetChunk == null || turnDelayTimer > 0) {
+            setForwardForced(false);
             return;
         }
 
-        // 玩家当前位置
         Vec3d playerPos = mc.player.getPos();
-        // 目标区块中心位置
         Vec3d targetPos = new Vec3d(targetChunk.getStartX() + 8, mc.player.getY(), targetChunk.getStartZ() + 8);
 
-        // 计算到目标的方向向量
         double deltaX = targetPos.x - playerPos.x;
         double deltaZ = targetPos.z - playerPos.z;
 
-        // 计算朝向目标区块的偏航角（Yaw）
-        // 使用 atan2 计算角度，然后转换为度数
-        // 注意：Minecraft的坐标系中，Z轴正方向是南，X轴正方向是东
-        // atan2(-deltaX, deltaZ) 计算的是从北方向顺时针旋转的角度
-        targetYaw = (float) Math.toDegrees(Math.atan2(-deltaX, deltaZ));
-
-        // 获取玩家前进方向
-        Direction playerDirection = Direction.fromRotation(targetYaw);
-        // 前进方向的左右两边区块如果没加载，则停下
-        if (waitChunkLoad.get() && !AdjacentChunksLoaded(playerDirection)) {
+        double distance2D = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+        if (distance2D < 1.0) {
+            setForwardForced(false);
             return;
         }
 
-        // 检查区块加载
+        targetYaw = (float) Math.toDegrees(Math.atan2(-deltaX, deltaZ));
+        mc.player.setYaw(targetYaw);
+
         if (waitChunkLoad.get()) {
+            Direction playerDirection = Direction.fromRotation(targetYaw);
+            if (!AdjacentChunksLoaded(playerDirection)) {
+                setForwardForced(false);
+                return;
+            }
+
             int chunkX = (int) (mc.player.getX() / 16);
             int chunkZ = (int) (mc.player.getZ() / 16);
             if (!mc.world.getChunkManager().isChunkLoaded(chunkX, chunkZ)) {
-                return; // 区块未加载时停止移动
+                setForwardForced(false);
+                return;
             }
         }
 
-        // 计算2D距离
-        double distance2D = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
-
-        // 如果距离足够近，认为已到达
-        if (distance2D < 1.0) {
-            return;
+        if (moveSpeed.get() > 1.0) {
+            mc.player.setSprinting(true);
         }
 
-        // 将方向向量标准化
-        Vec3d direction = new Vec3d(deltaX, 0, deltaZ).normalize();
-
-        // 设置移动速度
-        setX(direction.x * moveSpeed.get());
-        setY(getY() * 0.9900000095367432D); // Y轴阻力，与ElytraFlyXin保持一致
-        setZ(direction.z * moveSpeed.get());
-
-        // 应用空气阻力 - 与ElytraFlyXin保持一致的阻力常量
-        setX(getX() * 0.9800000190734863D); // X轴阻力（2%衰减）
-        setZ(getZ() * 0.9900000095367432D); // Z轴阻力（1%衰减）
-
-        // 应用移动
-        event.cancel();
-        mc.player.move(MovementType.SELF, mc.player.getVelocity());
+        setForwardForced(true);
     }
 
     @Override
     public void onDeactivate() {
+        setForwardForced(false);
         info("你可以保存此信息以便于下次重新开始: ");
         if (originChunk != null) {
             info("originX（起始区块X）: " + originChunk.x);
@@ -578,6 +546,18 @@ public class BaseFinderXin extends Module {
         originChunk = null;
         targetChunk = null;
         currentPath = null;
+    }
+
+    private void setForwardForced(boolean pressed) {
+        if (mc.options == null) return;
+
+        if (pressed) {
+            mc.options.forwardKey.setPressed(true);
+            forcingForward = true;
+        } else if (forcingForward) {
+            mc.options.forwardKey.setPressed(false);
+            forcingForward = false;
+        }
     }
 
     // 检查当前区块左右两边区块是否已完全加载
